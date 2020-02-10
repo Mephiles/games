@@ -1,0 +1,795 @@
+<% include partials/header %>
+
+<style type="text/css">
+    body {
+        font-family: Arial;
+    }
+
+    table {
+        width: 630px;
+        box-sizing: border-box;
+        padding: 0;
+        margin: 0;
+    }
+    tr {
+        width: 100%;
+        padding: 0;
+        margin: 0;
+        height: 70px;
+    }
+    tr.top td{
+        border-top: 3px solid black;
+    }
+    tr.bottom td{
+        border-bottom: 3px solid black;
+    }
+    td {
+        width: 70px;
+        border-right: 0.5px solid lightgrey;
+        border-bottom: 0.5px solid lightgrey;
+        cursor: pointer;
+        padding: 1px;
+    }
+    td.left {
+        border-left: 3px solid black;
+    }
+    td.right {
+        border-right: 3px solid black;
+    }
+    td.right-border {
+        border-right: 3px solid black;
+    }
+    td.bottom-border {
+        border-bottom: 3px solid black;
+    }
+    td input {
+        width: 100%;
+        height: 100%;
+        line-height: 100%;
+        border: none;
+        outline: none;
+        margin: 0;
+        padding: 0;
+        font-size: 45pt;
+        text-align: center;
+    }
+    td input:hover {
+        background-color: #2afe0029;
+        cursor: pointer;
+    }
+    #solve {
+        margin-top: 20px;
+        margin-left: 20px;
+        width: 100px;
+        height: 50px;
+        background-color: #1c99ff;
+        color: white;
+        text-align: center;
+        line-height: 50px;
+        font-size: 18px;
+        border-radius: 20px;
+        cursor: pointer;
+    }
+    #solve:hover {
+        padding: 2px;
+    }
+    input[type=number]::-webkit-inner-spin-button, 
+    input[type=number]::-webkit-outer-spin-button { 
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        margin: 0; 
+    }
+    .mode {
+        width: 150px;
+        height: 50px;
+        float: left;
+        margin-top: 50px;
+        border: 0.5px solid lightgrey;
+        margin-left: 20px;
+        margin-right: 20px;
+        text-align: center;
+        line-height: 50px;
+        font-size: 25px;
+        cursor: pointer;
+        border-radius: 20px;
+    }
+    .mode.active {
+        background-color: lightblue;
+    }
+    #time {
+        font-size: 20px;
+        position: absolute;
+        bottom: 30px;
+        left: 20px;
+    }
+</style>
+
+<table cellspacing="0" cellpadding="0"></table>
+<div id="solve" onclick="solve()">SOLVE</div>
+<div class="mode" id="clear-mode" onclick="setMode('clear')">Clear</div>
+<div class="mode" id="easy-mode" onclick="setMode('easy')">Easy</div>
+<div class="mode" id="hard-mode" onclick="setMode('hard')">Hard</div>
+<div class="mode" id="expert-mode" onclick="setMode('expert')">Expert</div>
+<p id="time"></p>
+
+<script type="text/javascript">
+    console.log("START");
+
+    var board;
+    var table;
+    var solveStates = [];
+
+    const modes = {
+        "expert": [
+            [5, null, null, null, 7, null, null, 8, 4],
+            [null, null, 9, null, null, 1, 2, null, null],
+            [null, null, null, 5, null, 9, null, null, null],
+            [null, null, null, null, null, null, null, null, null],
+            [null, 1, null, null, 9, 6, null, 4, null],
+            [7, 5, 3, null, null, null, 1, null, null],
+            [null, 7, 4, null, null, null, null, null, null],
+            [null, null, null, null, null, 3, null, 2, null],
+            [9, null, null, null, null, null, 3, null, null]
+        ],
+        "easy": [
+            [null, 7, 3, null, null, null, 1, 4, null],
+            [null, null, null, null, null, null, null, null, null],
+            [1, null, null, null, 7, 4, 2, 9, null],
+            [4, null, null, 5, 3, 1, 7, null, 2],
+            [null, 5, null, null, null, null, 3, 8, null],
+            [null, null, 6, 8, 2, null, 4, null, null],
+            [6, null, 1, 7, 5, null, 8, null, null],
+            [null, 4, 7, null, 1, 8, null, 3, null],
+            [2, 3, null, null, 9, 6, null, 1, 7]
+        ],
+        "hard": [
+            [null, null, 5, 7, null, null, null, null, null],
+            [null, null, 7, null, null, 9, 6, null, 8],
+            [null, 8, null, null, null, 2, null, 1, null],
+            [null, 3, null, null, null, null, null, null, null],
+            [5, null, null, 2, 6, 1, null, 7, null],
+            [null, null, null, 8, null, null, 1, null, 9],
+            [null, null, null, 1, null, null, null, null, 3],
+            [3, null, 9, null, 2, null, null, 8, null],
+            [null, null, null, null, 4, null, null, null, null],
+        ]
+    }
+
+    window.onload = () => {
+        table = document.querySelector("table");
+
+        new Box([0,1,2], [0,1,2]);
+        new Box([3,4,5], [0,1,2]);
+        new Box([6,7,8], [0,1,2]);
+        new Box([0,1,2], [3,4,5]);
+        new Box([3,4,5], [3,4,5]);
+        new Box([6,7,8], [3,4,5]);
+        new Box([0,1,2], [6,7,8]);
+        new Box([3,4,5], [6,7,8]);
+        new Box([6,7,8], [6,7,8]);
+
+        for(let i = 0; i < 9; i++){
+            let row = document.createElement("tr");
+
+            let _row = new Row(i, row);
+
+            i === 0 ? row.classList.add("top") : null;
+            i === 8 ? row.classList.add("bottom") : null;
+
+            for(let j = 0; j < 9; j++){
+                let sqr = document.createElement("td");
+
+                j === 0 ? sqr.classList.add("left") : null;
+                j === 8 ? sqr.classList.add("right") : null;
+                [2,5].includes(j)? sqr.classList.add("right-border") : null;
+                [2,5].includes(i)? sqr.classList.add("bottom-border") : null;
+
+                let input = document.createElement("input");
+                input.setAttribute("maxlength", "1");
+                sqr.appendChild(input);
+
+                let sqrInst = new Square(j, i, sqr);
+                _row.children.push(sqrInst);
+                let box_inst;
+
+                let foundCol = false;
+                for(let col of Column.instances){
+                    if(col.index == j){
+                        foundCol = true;
+                        col.children.push(sqrInst);
+                    }
+                }
+
+                if(!foundCol)
+                    new Column(j).children.push(sqrInst);
+
+                for(let inst of Box.instances){
+                    if(inst.Xs.includes(j) && inst.Ys.includes(i)){
+                        inst.children.push(sqrInst);
+                        box_inst = inst;
+                    }
+                }
+
+                input.addEventListener("change", () => {
+                    sqrInst.value = parseInt(input.value);
+                });
+
+                row.appendChild(sqr);
+            }
+            table.appendChild(row);
+        }
+            
+        // const mode = "easy";
+        // const mode = "hard";
+        // const mode = "expert";
+        const mode = null;
+
+        window.board = new Board(table, 9, 9);
+        window.board.fill(modes[mode]);
+    }
+    class CollectionFunctions {
+        constructor(){}
+
+        solved(){
+            let count = 0;
+            for(let child of this.children){
+                if(child.value)
+                    count++;
+            }
+
+            if(count === 9)
+                return true;
+            return false;
+        }
+
+        hasValue(i){
+            for(let child of this.children){
+                if(child.value == i)
+                    return true;
+            }
+            return false;
+        }
+
+        hasChild(_child){
+            for(let child of this.children){
+                if(child == _child)
+                    return true;
+            }
+            return false;
+        }
+    }
+
+    class Board {
+        constructor(el, width, height){
+            this.width = width;
+            this.height = height;
+            this.el = el;
+        }
+
+        clear(){
+            for(let sqr of Square.instances){
+                sqr.value = null;
+                sqr.input.value = "";
+                sqr.input.disabled = false;
+                sqr.input.style.color = "";
+            }
+        }
+
+        fill(arr){
+            this.clear();
+            // row_index = Y
+            // square_index = X
+            for(let row_index in arr){
+                for(let square_index in arr[row_index]){
+                    if(arr[row_index][square_index]){
+                        [...[...this.el.children][row_index].children][square_index].querySelector("input").value = arr[row_index][square_index];
+
+                        for(let sqr of Square.instances){
+                            if(sqr.X == square_index && sqr.Y == row_index){
+                                sqr.value = arr[row_index][square_index];
+                            }
+
+                            sqr.input.disabled = true;
+                            if(sqr.value){
+                                sqr.input.style.color = "black";
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        setState(state){
+            this.fill(state.board);
+
+            for(let sqr of Square.instances){
+                sqr.value = state.board[sqr.Y][sqr.X];
+                sqr.input.value = state.board[sqr.Y][sqr.X];
+            }
+
+            for(let double of state.doubles){
+                if(double.tried.length === double.values.length)
+                    state.doubles.slice(state.doubles.indexOf(double), 1);
+
+                let found = false;
+                for(let value of double.values){
+                    // TEMP
+                    if(value === 4 && double.sqr.X === 1 && double.sqr.Y === 1)
+                        value = 8
+                    // TEMP
+
+                    if(double.tried.includes(value))
+                        continue;
+
+                    double.tried.push(value);
+                    double.sqr.value = value;
+                    double.sqr.input.value = value;
+                    found = true;
+                    break;
+                }
+
+                if(found)
+                    break;
+
+                if(state.doubles.length === 0){
+                    solveStates.slice(solveStates.indexOf(state), 1);
+                    this.setState(solveStates[0]);
+                }
+            }
+        }
+    }
+
+    class Square extends CollectionFunctions {
+        constructor(x, y, el){
+            super();
+            this.X = x;
+            this.Y = y,
+            this.el = el;
+            this.value = null;
+            this.input = el.querySelector("input");
+
+            Square.instances.push(this);
+        }
+
+        static instances = [];
+    }
+
+    class Box extends CollectionFunctions {
+        constructor(Xs, Ys){
+            super();
+            this.Xs = Xs;
+            this.Ys = Ys;
+            this.children = []
+
+            Box.instances.push(this);
+        }
+
+        static instances = []
+    }
+
+    class Row extends CollectionFunctions {
+        constructor(index, el){
+            super();
+            this.index = index;
+            this.el = el;
+            this.children = []
+
+            Row.instances.push(this);
+        }
+
+        static instances = []
+    }
+
+    class Column extends CollectionFunctions {
+        constructor(index){
+            super();
+            this.index = index;
+            this.children = []
+
+            Column.instances.push(this);
+        }
+
+        static instances = []
+    }
+
+    function solve(){
+        console.time("SOLVING!")
+        var startTime = window.performance.now();
+
+        // just graphics/design
+        for(let sqr of Square.instances){
+            sqr.input.disabled = true;
+            if(sqr.value){
+                sqr.input.style.color = "black";
+            }
+        }
+        
+        // main solve looper
+        for(let looper = 0; looper < 100; looper++){
+            let solved_boxes = 0;
+            let solved_rows = 0;
+            let solved_cols = 0;
+
+            let found_numbers = 0;
+
+            for(let box of Box.instances){  // go through each box
+                if(box.solved()){  // box solved
+                    solved_boxes++;
+                    continue;
+                }
+
+                for(let i = 1; i <= 9; i++){  // try each number into box
+                    if(box.hasValue(i))  // number exists in box
+                        continue;
+
+                    let suitable_square = suitableElement(i, box);  // find suitable square for number
+
+                    if(suitable_square){  // if only one suitable square exists
+                        for(let sqr of Square.instances){
+                            if(sqr.X === suitable_square[0] && sqr.Y === suitable_square[1]){
+                                sqr.value = i;
+                                sqr.input.value = i;
+                                found_numbers++;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if(solved_boxes === 9){
+                console.log("All boxes solved!");
+                break;
+            }
+
+            for(let row of Row.instances){  // loop through each row
+                if(row.solved()){  // row is solved
+                    solved_rows++;
+                    continue;
+                }
+
+                for(let i = 1; i <= 9; i++){  // try each number into row
+                    if(row.hasValue(i))
+                        continue;
+
+                    let suitable_squares = []
+
+                    for(let sqr of row.children){  // try each empty square
+                        if(sqr.value)
+                            continue;
+
+                        for(let box of Box.instances){  // find correct box
+                            if(!box.hasChild(sqr))
+                                continue
+
+                            if(box.hasValue(i))  // if number exists in box
+                                break;
+        
+                            for(let col of Column.instances){  // find correct column for square
+                                if(col.index != sqr.X)
+                                    continue;
+
+                                if(!col.hasValue(i))  // column doesn't have value
+                                    suitable_squares.push(sqr);
+                                break;
+                            }
+                            break;
+                        }
+                    }
+
+                    if(suitable_squares.length === 1){
+                        suitable_squares[0].value = i;
+                        suitable_squares[0].input.value = i;
+                        found_numbers++;
+                        break;
+                    }
+                }
+            }
+
+            if(solved_rows === 9){
+                console.log("All rows solved!");
+                break;
+            }
+
+            for(let col of Column.instances){  // loop through each column
+                if(col.solved()){  // column is solved
+                    solved_cols++;
+                    continue;
+                }
+
+                for(let i = 1; i <= 9; i++){  // try each number into column
+                    if(col.hasValue(i))
+                        continue;
+
+                    let suitable_squares = []
+
+                    for(let sqr of col.children){  // try each empty square
+                        if(sqr.value)
+                            continue;
+
+                        for(let box of Box.instances){  // find correct box
+                            if(!box.hasChild(sqr))
+                                continue
+
+                            if(box.hasValue(i))  // if number exists in box
+                                break;
+        
+                            for(let row of Row.instances){  // find correct row for square
+                                if(row.index != sqr.Y)
+                                    continue;
+
+                                if(!row.hasValue(i))  // row doesn't have value
+                                    suitable_squares.push(sqr);
+                                break;
+                            }
+                            break;
+                        }
+                    }
+
+                    if(suitable_squares.length === 1){
+                        suitable_squares[0].value = i;
+                        suitable_squares[0].input.value = i;
+                        found_numbers++;
+                        break;
+                    }
+                }
+            }
+
+            if(solved_cols === 9){
+                console.log("All columns solved!");
+                break;
+            }
+
+            if(found_numbers === 0){
+                console.log("Looking for Single candidates!");
+                if(!lookForSingleCandidates()){
+                    console.log("Didn't find any numbers!");
+                    break;
+                }
+            }
+        }
+
+        console.timeEnd("SOLVING!");
+        var endTime = window.performance.now();
+        var solve_time = (endTime-startTime).toFixed(2);
+
+        document.querySelector("#time").innerText = "Solved in: " + solve_time + "ms";
+    }
+
+    function matchesInBox(sqr, i){
+        for(let box of Box.instances){
+            if(box.Xs.includes(sqr.X) && box.Ys.includes(sqr.Y)){
+                if(box.values.includes(i))
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    function suitableElement(number, box){
+        var suitable_squares = []
+
+        for(let sqr of box.children){
+            if(sqr.value)
+                continue;
+
+            let row_matches = matchesInRow(sqr, number);
+
+            let col_matches = matchesInColumn(sqr, number);
+
+            if(!row_matches && !col_matches)
+                suitable_squares.push([sqr.X, sqr.Y]);
+        }
+
+        if(suitable_squares.length === 1)
+            return suitable_squares[0];
+        return false;
+    }
+
+    function matchesInRow(sqr, number){
+        let squares = [...sqr.el.parentElement.children];
+
+        for(let square of squares){
+            let value = square.querySelector("input").value;
+            
+            if(value && parseInt(value) === number){
+                return true;
+            }
+        }
+        return false
+    }
+
+    function matchesInColumn(sqr, number){
+        let rows = [...document.querySelector("table").children];
+
+        for(let row of rows){
+            let value = [...row.children][sqr.X].querySelector("input").value;
+            if(value && parseInt(value) === number){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function lookForSingleCandidates(){
+        let found = false;
+        for(let box of Box.instances){  // check each box
+            let not_allowed_numbers_in_box = []
+
+            for(let sqr of box.children){
+                if(sqr.value)
+                    not_allowed_numbers_in_box.push(sqr.value);
+            }
+
+            for(let sqr of box.children){  // each square in box
+                if(sqr.value)
+                    continue;
+
+                let not_allowed_numbers = []
+
+                for(let row of Row.instances){
+                    if(row.hasChild(sqr)){
+                        for(let sqr of row.children){
+                            if(!sqr.value)
+                                continue;
+
+                            if(!not_allowed_numbers.includes(sqr.value))
+                                not_allowed_numbers.push(sqr.value);
+                        }
+                    }
+                }
+
+                for(let col of Column.instances){
+                    if(col.hasChild(sqr)){
+                        for(let sqr of col.children){
+                            if(!sqr.value)
+                                continue;
+
+                            if(!not_allowed_numbers.includes(sqr.value))
+                                not_allowed_numbers.push(sqr.value);
+                        }
+                    }
+                }
+
+                let not_allowed = remove_duplicates([...not_allowed_numbers_in_box, ...not_allowed_numbers]);
+
+                if(not_allowed.length === 8){
+                    for(let i = 1; i <= 9; i++){
+                        if(!not_allowed.includes(i)){
+                            sqr.value = i;
+                            sqr.input.value = i;
+                            found = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        if(!found){
+            console.log("No numbers found! Going in rough..");
+            found = bruteForce();
+        }
+
+        return found;
+    }
+
+    function bruteForce(){
+        if(solveStates.length > 0 && solveStates[0].doubles.length > 0){
+            board.setState(solveStates[0]);
+            return true;
+        }
+
+        let doubles = []
+
+        for(let box of Box.instances){  // check each box
+            let not_allowed_numbers_in_box = []
+
+            for(let sqr of box.children){
+                if(sqr.value)
+                    not_allowed_numbers_in_box.push(sqr.value);
+            }
+
+            for(let sqr of box.children){  // each square in box
+                if(sqr.value)
+                    continue;
+
+                let not_allowed_numbers = []
+
+                for(let row of Row.instances){
+                    if(row.hasChild(sqr)){
+                        for(let sqr of row.children){
+                            if(!sqr.value)
+                                continue;
+
+                            if(!not_allowed_numbers.includes(sqr.value))
+                                not_allowed_numbers.push(sqr.value);
+                        }
+                    }
+                }
+
+                for(let col of Column.instances){
+                    if(col.hasChild(sqr)){
+                        for(let sqr of col.children){
+                            if(!sqr.value)
+                                continue;
+
+                            if(!not_allowed_numbers.includes(sqr.value))
+                                not_allowed_numbers.push(sqr.value);
+                        }
+                    }
+                }
+
+                let not_allowed = remove_duplicates([...not_allowed_numbers_in_box, ...not_allowed_numbers]);
+
+                if(not_allowed.length === 7){
+                    let allowed_numbers = []
+
+                    for(let i = 1; i <= 9; i++){
+                        if(!not_allowed.includes(i)){
+                            allowed_numbers.push(i);
+                        }
+                    }
+
+                    doubles.push({
+                        sqr: sqr,
+                        values: allowed_numbers,
+                        tried: []
+                    });
+                }
+            }
+        }
+
+        if(doubles.length === 0)
+            return false;
+
+        let state = {}
+        state.board = getBoardState();
+        state.doubles = doubles;
+
+        solveStates.push(state);
+
+        board.setState(solveStates[0]);
+        return true;
+    }
+
+    function remove_duplicates(arr) {
+        let new_arr = []
+
+        for(let item of arr){
+            if(!new_arr.includes(item))
+                new_arr.push(item)
+        }
+
+        return new_arr;
+    }
+
+    function getBoardState(){
+        let state = []
+        for(let row of Row.instances){
+            let row_arr = []
+            for(let sqr of row.children){
+                row_arr.push(sqr.value);
+            }
+            state.push(row_arr);
+        }
+        return state;
+    }
+
+    function setMode(mode){
+        mode = (mode === "clear")? null : mode;
+
+        solveStates = []
+
+        board.fill(modes[mode]);
+
+        for(let el of document.querySelectorAll(".mode")){
+            el.classList.remove("active");
+        }
+        
+        if(mode)
+            document.querySelector(`#${mode}-mode`).classList.add("active");
+    }
+</script>
+
+<% include partials/footer %>

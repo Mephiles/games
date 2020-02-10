@@ -1,0 +1,351 @@
+<% include partials/header %>
+
+<style>
+
+    table {
+        margin: auto;
+        border: 0.5px solid lightgrey;
+        padding: 0;
+        border-collapse: collapse;
+        border-spacing: 0;
+    }
+
+    tr {
+        width: 100%;
+        padding: 0;
+        border-bottom: 0.5px solid lightgrey;
+    }
+
+    td {
+        height: inherit;
+        padding: 0;
+        border-left: 0.25px solid lightgrey;
+        font-size: 18px;
+        text-align: center;
+        background-color: white;
+    }
+
+    td[snake="true"]{
+        background-color: #8BC33F;
+        border-color: #8BC33F;
+    }
+
+    td[head="true"]{
+        background-image: url("/images/snake_head2.png");
+        background-position: center;
+        background-size: cover;
+        background-color: white;
+    }
+
+    td[tail="true"]{
+        background-image: url("/images/snake_tail.png");
+        background-position: center;
+        background-size: cover;
+        background-color: white;
+    }
+
+    td[apple="true"]{
+        /* background-image: url("/images/apple_red.jpg"); */
+        background-image: url("/images/apple_black.png");
+        background-position: center;
+        background-size: cover;
+    }
+
+    td[head="true"][direction="right"] {
+        -webkit-transform: rotate(-90deg);
+        -moz-transform: rotate(-90deg);
+        -ms-transform: rotate(-90deg);
+        -o-transform: rotate(-90deg);
+        transform: rotate(-90deg);
+    }
+
+    td[head="true"][direction="left"] {
+        -webkit-transform: rotate(90deg);
+        -moz-transform: rotate(90deg);
+        -ms-transform: rotate(90deg);
+        -o-transform: rotate(90deg);
+        transform: rotate(90deg);
+    }
+
+    td[head="true"][direction="up"] {
+        -webkit-transform: rotate(-180deg);
+        -moz-transform: rotate(-180deg);
+        -ms-transform: rotate(-180deg);
+        -o-transform: rotate(-180deg);
+        transform: rotate(-180deg);
+    }
+
+    td[head="true"][direction="down"] {
+        -webkit-transform: rotate(0deg);
+        -moz-transform: rotate(0deg);
+        -ms-transform: rotate(0deg);
+        -o-transform: rotate(0deg);
+        transform: rotate(0deg);
+    }
+
+    td[tail="true"][direction="right"] {
+        -webkit-transform: rotate(-180deg);
+        -moz-transform: rotate(-180deg);
+        -ms-transform: rotate(-180deg);
+        -o-transform: rotate(-180deg);
+        transform: rotate(-180deg);
+    }
+
+    td[tail="true"][direction="left"] {
+        -webkit-transform: rotate(0deg);
+        -moz-transform: rotate(0deg);
+        -ms-transform: rotate(0deg);
+        -o-transform: rotate(0deg);
+        transform: rotate(0deg);
+    }
+
+    td[tail="true"][direction="up"] {
+        -webkit-transform: rotate(90deg);
+        -moz-transform: rotate(90deg);
+        -ms-transform: rotate(90deg);
+        -o-transform: rotate(90deg);
+        transform: rotate(90deg);
+    }
+
+    td[tail="true"][direction="down"] {
+        -webkit-transform: rotate(-90deg);
+        -moz-transform: rotate(-90deg);
+        -ms-transform: rotate(-90deg);
+        -o-transform: rotate(-90deg);
+        transform: rotate(-90deg);
+    }
+</style>
+
+<table></table>
+
+<script>
+    window.onload = function(){
+        console.log("START");
+    
+        var table = document.querySelector("table");
+        var table_width = 500;
+        var squares = 20;
+        var game = false;
+        var square_width = table_width/squares;
+        var snake_length = 5;
+        var direction;
+        var moves = [];
+        var apple;
+
+        createBoard(squares)
+        setUpSnake(snake_length);
+        setUpControls();
+        gameLooper();
+
+        // functions
+        function createBoard(squares){
+
+            table.style.width = String(table_width) + "px";
+            table.style.height = String(table_width) + "px";
+
+            for(i = 0; i < squares; i++){
+                let row = document.createElement("tr");
+                row.style.width = String(table_width)+"px";
+                row.style.height = String(square_width)+"px";
+
+                for(j = 0; j < squares; j++){
+                    let sqr = document.createElement("td");
+                    sqr.setAttribute("apple", "false");
+                    sqr.setAttribute("snake", "false");
+                    sqr.setAttribute("head", "false");
+                    sqr.setAttribute("tail", "false");
+                    sqr.style.width = String(square_width)+"px";
+                    sqr.style.height = String(square_width)+"px";
+
+                    let apple = document.createElement("img");
+                    apple.src = "/images/apple.ico";
+                    apple.style.width = String(square_width*0.8)+"px";
+                    apple.style.height = String(square_width*0.8)+"px";
+                    apple.style.margin = "auto";
+                    apple.style.display = "none";
+                    sqr.appendChild(apple);
+
+                    row.appendChild(sqr);
+                }
+                table.appendChild(row);
+            }
+
+            // add snake length of right moves (excl tail)
+            for(let i = 0; i < snake_length-1; i++){
+                moves.push("right");
+            }
+        }
+
+        function setUpSnake(snake_length){
+            let middle_row = [...table.children][squares/2-1];
+            let middle_sqr = [...middle_row.children][squares/2-1];
+
+            middle_sqr.setAttribute("snake", "true");
+            middle_sqr.nextElementSibling.setAttribute("snake", "true");
+            middle_sqr.nextElementSibling.nextElementSibling.setAttribute("snake", "true");
+            middle_sqr.nextElementSibling.nextElementSibling.setAttribute("head", "true");
+            middle_sqr.nextElementSibling.nextElementSibling.setAttribute("direction", "right");
+            middle_sqr.previousElementSibling.setAttribute("snake", "true");
+            middle_sqr.previousElementSibling.previousElementSibling.setAttribute("snake", "true");
+            middle_sqr.previousElementSibling.previousElementSibling.setAttribute("tail", "true");
+            middle_sqr.previousElementSibling.previousElementSibling.setAttribute("direction", "right");
+        }
+
+        function setUpControls(){
+            document.onkeyup = moveSnake;
+
+            function moveSnake(e){
+
+                e = e || window.event;
+
+                if (e.keyCode == '38') { // up arrow
+                    if(direction === "down"){return}
+
+                    //console.log("UP");
+                    direction = "up";
+
+                    if(!game){game=true}
+                }
+                else if (e.keyCode == '40') { // down arrow
+                    if(direction === "up"){return}
+
+                    //console.log("DOWN");
+                    direction = "down";
+
+                    if(!game){game=true}
+                }
+                else if (e.keyCode == '37') { // left arrow
+                    if(direction === "right"){return}
+
+                    //console.log("LEFT");
+                    direction = "left";
+
+                    if(!game){game=true}
+                }
+                else if (e.keyCode == '39') { // right arrow
+                    if(direction === "left"){return}
+
+                    //console.log("RIGHT");
+                    direction = "right";
+
+                    if(!game){game=true}
+                }
+
+            }
+        }
+
+        function gameLooper(){
+            let loop = setInterval(function(){
+                //console.log("LOOP");
+                if(!game){return}
+
+                let apple_eaten;
+
+                let head = document.querySelector("td[head='true']");
+                let head_index = [...head.parentElement.children].indexOf(head);
+                let tail = document.querySelector("td[tail='true']");
+                let tail_index = [...tail.parentElement.children].indexOf(tail);
+
+                let head_directions = {
+                    left: head.previousElementSibling || null,
+                    right: head.nextElementSibling || null,
+                    up: head.parentElement.previousElementSibling ? [...head.parentElement.previousElementSibling.children][head_index] : null,
+                    down: head.parentElement.nextElementSibling ? [...head.parentElement.nextElementSibling.children][head_index] : null
+                }
+
+                let tail_directions = {
+                    left: tail.previousElementSibling || null,
+                    right: tail.nextElementSibling || null,
+                    up: tail.parentElement.previousElementSibling ? [...tail.parentElement.previousElementSibling.children][tail_index] : null,
+                    down: tail.parentElement.nextElementSibling ? [...tail.parentElement.nextElementSibling.children][tail_index] : null
+                }
+
+                // sqr is out of bounds
+                if(head_directions[direction] == null){
+                    console.log("Out of Bounds!");
+                    gameOver("lost");
+                    return;
+                }
+
+                // sqr is part of snake
+                if(head_directions[direction].getAttribute("snake") === "true"){
+                    console.log("SNAKE!");
+                    gameOver("lost");
+                    return;
+                }
+
+                // move snake head
+                head.setAttribute("head", "false");
+                head.removeAttribute("direction");
+                head_directions[direction].setAttribute("snake", "true");
+                head_directions[direction].setAttribute("head", "true");
+                head_directions[direction].setAttribute("direction", direction);
+                moves.push(direction); // add to moves
+
+                // check for apple and tail collision
+                if(head_directions[direction].getAttribute("apple") === "true"){
+                    console.log("EAT APPLE");
+                    apple.setAttribute("apple", "false");
+                    apple = null;
+                    apple_eaten = true;
+                }
+
+                if(!apple_eaten){
+                    // move snake tail
+                    tail.setAttribute("tail", "false");
+                    tail.setAttribute("snake", "false");
+                    tail.removeAttribute("direction");
+                    tail_directions[moves[0]].setAttribute("tail", "true");
+                    tail_directions[moves[0]].setAttribute("direction", moves[0]);
+                    moves.shift(); // remove move
+                } else {
+                    //moves.push(direction);
+                    head.setAttribute("snake", "true");
+                }
+
+                // check for apple on board
+                if(!apple){
+                    apple = (function addApple(){
+                        let row_index = Math.floor(Math.random()*squares);
+                        let sqr_index = Math.floor(Math.random()*squares);
+
+                        let row = [...table.children][row_index];
+                        let square = [...row.children][sqr_index];
+
+                        if(square.getAttribute("snake") === "true"){
+                            return addApple();
+                        } else {
+                            return square;
+                        }
+                    })();
+
+                    apple.setAttribute("apple", "true");
+                }
+                
+            }, 200);
+        }
+
+        function gameOver(status){
+            if(status === "lost"){
+                console.log("GAME LOST!");
+                game = false;
+            } else if (status === "won"){
+                console.log("GAME WON!");
+                game = false;
+            }
+
+            resetGame();
+        }
+
+        function resetGame(){
+            table.innerHTML = "";
+            direction = "";
+            moves = [];
+            apple = null;
+            createBoard(squares)
+            setUpSnake(snake_length);
+        }
+    }
+</script>
+
+<% include partials/footer %>

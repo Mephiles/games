@@ -1,0 +1,337 @@
+<% include partials/header %>
+
+<script src="https://code.jquery.com/jquery-1.9.1.js"></script>
+<script src="https://code.jquery.com/ui/1.10.3/jquery-ui.js"></script>
+
+<style type="text/css">
+    
+    #table {
+        margin: auto;
+        width: 800px;
+        height: 800px;
+        border: 30px solid #615e5e;
+        position: relative;
+    }
+    .row {
+        width: 100%;
+        height: 100px;
+    }
+    .tile {
+        width: 100px;
+        height: 100px;
+        float: left;
+    }
+    .tile.black {
+        /*background-color: #7d4c01;  brown */
+        background-color: #3c3c3c;
+    }
+    .tile.white {
+        background-color: #ad7b4d;
+    }
+    .tile.move {
+        background-color: lightblue;
+        cursor: pointer;
+    }
+    .tile.take {
+        background-color: #d82b2be0;
+        cursor: pointer;
+    }
+    .piece {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        margin-left: 10px;
+        margin-top: 10px;
+        cursor: pointer;
+        position: relative;
+    }
+    .piece.white {
+        background-color: #ffcfa0;
+    }
+    .piece.black {
+        background-color: #0A0B0D;
+    }
+    .piece.active-piece {
+        border: 2px solid lightgreen;
+    }
+    .piece.king {
+        border: 3px solid red !important;
+    }
+</style>
+
+<div id="table"></div>
+
+<script type="text/javascript">
+    class Piece {
+        constructor(color, x, y){
+            this.color = color;
+            this.X = x;
+            this.Y = y;
+            
+            this.table = document.querySelector("#table");
+            this.row = [...table.children][y];
+            this.tile = [...this.row.children][x];
+            let piece = document.createElement("div");
+            piece.classList.add("piece");
+            piece.classList.add(color);
+            this.piece = piece;
+            this.tile.appendChild(piece);
+            // event listeners
+            piece.addEventListener("click", () => {
+                let active_piece = this.table.querySelector(".piece.active-piece");
+                let move_tiles = this.table.querySelectorAll(".tile.move");
+                let take_tiles = this.table.querySelectorAll(".tile.take");
+                if(active_piece){
+                    active_piece.classList.remove("active-piece");
+                }
+                if(take_tiles){
+                    for(let tile of take_tiles){
+                        tile.classList.remove("take");
+                    }
+                }
+                if(move_tiles){
+                    for(let tile of move_tiles){
+                        tile.classList.remove("move");
+                    }
+                }
+                this.piece.classList.add("active-piece");
+                this.showMoves();
+            });
+        }
+        showMoves(){
+            const king = this.piece.classList.contains("king");
+            
+            let row_u = this.table.children[this.Y-1] || null; // upper row
+            let row_l = this.table.children[this.Y+1] || null; // lower row
+            let rows = [
+                this.table.children[this.Y-1] || null,
+                this.table.children[this.Y+1] || null
+            ]
+            for(let row of rows){
+                if(!row)
+                    continue;
+                let tile_left = row.children[this.X-1] || null;
+                let tile_right = row.children[this.X+1] || null;
+                let tiles = [
+                    row.children[this.X-1] || null,
+                    row.children[this.X+1] || null
+                ]
+                for(let tile of tiles){
+                    if(!tile)
+                        continue;
+                    let neighbour_piece = tile.querySelector(".piece");
+                    if(neighbour_piece){
+                        if(neighbour_piece.classList.contains("black") && this.color === "black"){
+                            continue;
+                        }
+                        if(neighbour_piece.classList.contains("white") && this.color === "white"){
+                            continue;
+                        }
+                        this.showTakes(tile);
+                    } else {
+                        if(king)
+                            tile.classList.add("move");
+                        else {
+                            let tile_y = [...table.children].indexOf(tile.parentElement);
+                            if(this.color === "black" && tile_y > this.Y){
+                                tile.classList.add("move");
+                            }
+                            if(this.color === "white" && tile_y < this.Y){
+                                tile.classList.add("move");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        showTakes(tile2){
+            let tile2_x = [...tile2.parentElement.children].indexOf(tile2);
+            let tile2_y = [...table.children].indexOf(tile2.parentElement);
+            let behind_x;
+            let behind_y;
+            if(this.X > tile2_x){
+                behind_x = tile2_x - 1;
+            }
+            if(this.X < tile2_x){
+                behind_x = tile2_x + 1;
+            }
+            if(this.Y > tile2_y){
+                behind_y = tile2_y - 1;
+            }
+            if(this.Y < tile2_y){
+                behind_y = tile2_y + 1;
+            }
+            try{
+                let behind_row = [...this.table.children][behind_y];
+                let behind_tile = [...behind_row.children][behind_x];
+                let has_piece = behind_tile.querySelector(".piece");
+                if(has_piece)
+                    throw "no_piece";
+                behind_tile.classList.add("take");
+            } catch(err){}
+        }
+        static movePiece(el, data, move){
+            let directions = {
+                up: false,
+                down: false,
+                left: false,
+                right: false
+            }
+            let take_x;
+            let take_y;
+            if(data.new_x > data.old_x){
+                directions.right = true;
+                take_x = data.new_x - 1;
+            }
+            if(data.new_x < data.old_x){
+                directions.left = true;
+                take_x = data.new_x + 1;
+            }
+            if(data.new_y > data.old_y){
+                directions.down = true;
+                take_y = data.new_y - 1;
+            }
+            if(data.new_y < data.old_y){
+                directions.up = true;
+                take_y = data.new_y + 1;
+            }
+            // remove move tiles
+            let move_tiles = document.querySelectorAll(".tile.move");
+            for(let tile of move_tiles){
+                tile.classList.remove("move");
+            }
+            // remove take tiles
+            let take_tiles = document.querySelectorAll(".tile.take");
+            for(let tile of take_tiles){
+                tile.classList.remove("take");
+            }
+            let counter = 0;
+            console.log("----------------------------")
+            let pusher = setInterval(() => {
+                if(counter === (move? 20:40)){  // 100px||200px / 5px = done
+                    clearInterval(pusher);
+                    for(let inst of Piece.instances){
+                        if(inst.X === data.old_x && inst.Y === data.old_y){
+                            // new data
+                            inst.X = data.new_x;
+                            inst.Y = data.new_y;
+                            inst.row = [...table.children][data.new_y];
+                            inst.tile = [...[...table.children][data.new_y].children][data.new_x];
+                            
+                            // move piece
+                            inst.tile.appendChild(el);
+                            // reset style
+                            el.style.top = "";
+                            el.style.left = "";
+                            el.style.right = "";
+                            el.style.bottom = "";
+                            if(inst.color === "black" && inst.Y === 7){
+                                inst.piece.classList.add("king");
+                            }
+                            if(inst.color === "white" && inst.Y === 0){
+                                inst.piece.classList.add("king");
+                            }
+                            console.log("MOVE", inst)
+                        }
+                    }
+                    for(let inst of Piece.instances){
+                        if(!move){
+                            let take_row = [...table.children][take_y];
+                            let take_tile = [...take_row.children][take_x];
+                            console.log("TAKE TILE", take_tile);
+                            if(inst.X === take_x && inst.Y === take_y){
+                                take_tile.querySelector(".piece").remove();  // remove piece
+                                inst = null;  // remove instance
+                            }
+                        }
+                    }
+                    return;
+                }
+                for(let dir in directions){
+                    if(directions[dir]){
+                        switch(dir){
+                            case "up":
+                                let top = parseInt(el.style.top) || 0;
+                                el.style.top = String(top-5) + "px";
+                                break;
+                            case "left":
+                                let left = parseInt(el.style.left) || 0;
+                                el.style.left = String(left-5) + "px";
+                                break;
+                            case "right":
+                                let right = parseInt(el.style.right) || 0;
+                                el.style.right = String(right-5) + "px";
+                                break;
+                            case "down":
+                                let bottom = parseInt(el.style.bottom) || 0;
+                                el.style.bottom = String(bottom-5) + "px";
+                                break;
+                        }
+                    }
+                }
+                counter++;
+            }, (move?20:10));
+        }
+        static instances = []
+    }
+    
+    window.onload = () => {
+        const table = document.querySelector("#table");
+        // Create table
+        for(let i = 0; i < 8; i++){   // i = row, j = tile
+            let row = document.createElement("div");
+            row.classList.add("row");
+            for(let j = 0; j < 8; j++){
+                let tile = document.createElement("div");
+                tile.classList.add("tile");
+                if(i % 2 === 1)
+                    j % 2 === 0 ? tile.classList.add("black") : tile.classList.add("white");
+                else
+                    j % 2 === 1 ? tile.classList.add("black") : tile.classList.add("white");
+                row.appendChild(tile);
+            }
+            table.appendChild(row);
+        }
+    
+        // Add pieces
+        const rows = document.querySelectorAll(".row");
+        for(let row of rows){
+            let tiles = row.querySelectorAll(".tile");
+            for(let tile of tiles){
+                let color = tile.classList[1];
+                
+                if(color === "white")
+                    continue
+                let x = [...row.children].indexOf(tile);
+                let y = [...table.children].indexOf(row);
+                if(y <= 2)  // Upper half - blacks
+                    var piece = new Piece("black", x, y);
+                else if (y >= 5)
+                    var piece = new Piece("white", x, y);
+                Piece.instances.push(piece);
+            }
+        }
+        // Moving event listener
+        const tiles = document.querySelectorAll(".tile");
+        for(let tile of tiles){
+            tile.addEventListener("click", () => {
+                if(tile.classList.contains("move") || tile.classList.contains("take")){
+                    let tile_x = [...tile.parentElement.children].indexOf(tile);
+                    let tile_y = [...table.children].indexOf(tile.parentElement);
+                    // active piece
+                    let active_piece = document.querySelector(".piece.active-piece");
+                    let piece_x = [...active_piece.parentElement.parentElement.children].indexOf(active_piece.parentElement);
+                    let piece_y = [...table.children].indexOf(active_piece.parentElement.parentElement);
+                    Piece.movePiece(active_piece, {
+                        old_x: piece_x,
+                        old_y: piece_y,
+                        new_x: tile_x,
+                        new_y: tile_y
+                    }, (tile.classList.contains("move")));
+                }
+            });
+        }
+    }
+</script>
+
+<% include partials/footer %>

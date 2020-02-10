@@ -1,0 +1,11 @@
+ICONS
+https://material.io/
+
+PNG -> ICO
+https://convertio.co/png-ico/
+
+BOOTSTRAP
+https://getbootstrap.com/
+
+FONT AWESOME
+https://fontawesome.com/

@@ -1,0 +1,410 @@
+<% include partials/header %>
+
+<style>
+    table {
+        margin: auto;
+        border: 0.5px solid black;
+        padding: 0;
+        border-collapse: collapse;
+        border-spacing: 0;
+    }
+
+    tr {
+        width: 100%;
+        padding: 0;
+        border-bottom: 0.5px solid black;
+    }
+
+    td {
+        height: inherit;
+        padding: 0;
+        border-left: 0.25px solid black;
+        font-size: 18px;
+        text-align: center;
+        background-color: grey;
+        cursor: pointer;
+    }
+
+    td[status="open"]{
+        cursor: default;
+    }
+
+    td[mine='true'] {
+        background-position: center !important;
+        background-size: cover !important;
+    }
+
+    #resetGame {
+        width: 100px;
+        height: 40px;
+        font-size: 20px;
+        border-radius: 10px;
+        background-color: white;
+        border: 1px solid lightgrey;
+        margin: auto;
+        cursor: pointer;
+        margin-left: 47%;
+        margin-top: 20px;
+        display: none;
+    }
+
+    #gameover-text, #gamewon-text {
+        font-size: 25px;
+        text-align: center;
+        font-weight: 600;
+        margin-top: 20px;
+        display: none;
+    }
+
+    #gameover-text {
+        color: red;
+    }
+
+    #gamewon-text {
+        color: green;
+    }
+</style>
+
+<table></table>
+<p id="gameover-text">Game Over!</p>
+<p id="gamewon-text">Game Won!</p>
+<button id="resetGame">Reset</button>
+
+<script type="text/javascript">
+    window.onload = function(){
+        console.log("START");
+
+        var table = document.querySelector("table");
+        var table_width = 500;
+        var squares = 20;
+        var minePercentage = 0.15;
+        var game = true;
+        var square_width = table_width/squares;
+        var first_move = true;
+        var colors = {
+            1: "blue",
+            2: "green",
+            3: "red",
+            4: "purple"
+        }
+
+        createBoard(squares);
+        //setupMines(minePercentage);
+        //setupNumbers();
+        setupPlayMode();
+        //displayNumbers();
+
+        document.querySelector("#resetGame").addEventListener("click", function(){
+            restartGame();
+        });
+
+        // functions
+        function createBoard(squares){
+
+            table.style.width = String(table_width) + "px";
+            table.style.height = String(table_width) + "px";
+
+            for(i = 0; i < squares; i++){
+                let row = document.createElement("tr");
+
+                for(j = 0; j < squares; j++){
+                    let sqr = document.createElement("td");
+                    sqr.setAttribute("value", "0");
+                    sqr.setAttribute("status", "closed");
+                    sqr.style.width = String(square_width)+"px";
+                    sqr.style.height = String(square_width)+"px";
+                    row.style.width = String(table_width)+"px";
+                    row.style.height = String(square_width)+"px";
+
+                    let flag = document.createElement("img");
+                    flag.src = "/images/flag.ico";
+                    flag.style.width = String(square_width*0.8)+"px";
+                    flag.style.height = String(square_width*0.8)+"px";
+                    flag.style.margin = "auto";
+                    flag.style.display = "none";
+                    sqr.appendChild(flag);
+
+                    row.appendChild(sqr);
+                }
+                table.appendChild(row);
+            }
+        }
+
+        function setupMines(minePercentage, safe_sqr){
+
+            let safe_squares = []
+            let safe_sqr_index = [...safe_sqr.parentElement.children].indexOf(safe_sqr);
+            let previous_row = safe_sqr.parentElement.previousElementSibling;
+            let next_row = safe_sqr.parentElement.nextElementSibling;
+
+            safe_squares.push(safe_sqr.previousElementSibling);
+            safe_squares.push(safe_sqr);
+            safe_squares.push(safe_sqr.nextElementSibling);
+
+            //previous row
+            safe_squares.push([...previous_row.children][safe_sqr_index-1])
+            safe_squares.push([...previous_row.children][safe_sqr_index])
+            safe_squares.push([...previous_row.children][safe_sqr_index+1])
+
+            //next row
+            safe_squares.push([...next_row.children][safe_sqr_index-1])
+            safe_squares.push([...next_row.children][safe_sqr_index])
+            safe_squares.push([...next_row.children][safe_sqr_index+1])
+
+            console.log(safe_squares)
+            
+
+            for(sqr of table.querySelectorAll("tr td")){
+
+                // quit if is a safe square
+                if(safe_squares.includes(sqr)){
+                    continue;
+                }
+
+                let randNr = Math.random();
+
+                if(randNr <= minePercentage){
+                    sqr.setAttribute("value", "-1");
+                    sqr.setAttribute("mine", "true");
+                }
+            }
+        }
+
+        function setupNumbers(){
+            let mines = table.querySelectorAll("td[mine='true']");
+
+            for(let mine of mines){
+                let sqrsToChange = []
+
+                let index = [...mine.parentElement.children].indexOf(mine);
+                let prevSqr = mine.previousElementSibling;
+                let nextSqr = mine.nextElementSibling;
+
+                sqrsToChange.push(prevSqr);
+                sqrsToChange.push(nextSqr);
+                
+                let prevRow = mine.parentElement.previousElementSibling;
+                let nextRow = mine.parentElement.nextElementSibling;
+
+                // previous row
+                if(prevRow != null){
+                    sqr_1 = prevRow.children[index-1];
+                    sqr_2 = prevRow.children[index];
+                    sqr_3 = prevRow.children[index+1];
+
+                    sqrsToChange.push(sqr_1);
+                    sqrsToChange.push(sqr_2);
+                    sqrsToChange.push(sqr_3);
+                }
+
+                // next row
+                if(nextRow != null){
+                    sqr_1 = nextRow.children[index-1];
+                    sqr_2 = nextRow.children[index];
+                    sqr_3 = nextRow.children[index+1];
+
+                    sqrsToChange.push(sqr_1);
+                    sqrsToChange.push(sqr_2);
+                    sqrsToChange.push(sqr_3);
+                }
+
+                // loop through squares to change
+                for(let sqr of sqrsToChange){
+                    if(sqr == null){continue}
+                    if(sqr.getAttribute("mine") === "true"){continue}
+
+                    sqr.setAttribute("value", parseInt(sqr.getAttribute("value"))+1)
+                }
+
+            }
+        }
+
+        function setupPlayMode(){
+            let squares = table.querySelectorAll("td");
+
+            for(let sqr of squares){
+                sqr.addEventListener("click", function(){
+                    if(!game){return}
+
+                    if(sqr.getAttribute("status") == "open" || sqr.getAttribute("status") == "marked"){
+                        return;
+                    }
+
+                    if(first_move){
+                        setupMines(minePercentage, sqr);
+                        setupNumbers();
+                        first_move = false;
+                    }
+
+                    let value = sqr.getAttribute("value");
+                    let mine = sqr.getAttribute("mine");
+
+                    if(mine){
+                        gameOver(sqr);
+                    } else {
+                        openSquares(sqr);
+                    }
+                });
+
+                sqr.addEventListener("contextmenu", function(e){
+                    e.preventDefault();
+
+                    if(!game){return}
+
+                    if(sqr.getAttribute("status") == "open"){
+                        return;
+                    }
+                    
+                    if(sqr.querySelector("img").style.display == "none"){
+                        sqr.querySelector("img").style.display = "block";
+                        sqr.setAttribute("status", "marked");
+
+                        hasWon();
+                    } else {
+                        sqr.querySelector("img").style.display = "none";
+                        sqr.setAttribute("status", "closed");
+                    }
+
+                });
+            }
+        }
+
+        function gameOver(sqr){
+            console.log("Game Over!");
+
+            // hide flag
+            sqr.querySelector("img").style.display = "none";
+
+            sqr.style.background = 'url("/images/mine.ico")';
+            sqr.style.backgroundColor = "rgba(255,0,0,0.85)";
+
+            document.querySelector("#resetGame").style.display = "block";
+            document.querySelector("#gameover-text").style.display = "block";
+            game = false;
+
+        }
+
+        function openSquares(sqr){
+            let value = sqr.getAttribute("value");
+
+            if(value != "0"){
+                sqr.style.color = colors[value];
+                sqr.style.backgroundColor = "lightgrey";
+                sqr.setAttribute("status", "open");
+                sqr.querySelector("img").style.display = "none";
+
+                // show number
+                sqr.innerText = value;
+
+                if(hasWon()){
+                    return;
+                }
+            } else {
+                sqr.style.color = colors[value];
+                sqr.style.backgroundColor = "lightgrey";
+                sqr.setAttribute("status", "open");
+                sqr.querySelector("img").style.display = "none";
+
+                if(hasWon()){
+                    return;
+                }
+
+                // other squares to open
+                let sqrsToOpen = []
+
+                let index = [...sqr.parentElement.children].indexOf(sqr);
+                let prevSqr = sqr.previousElementSibling;
+                let nextSqr = sqr.nextElementSibling;
+
+                sqrsToOpen.push(prevSqr);
+                sqrsToOpen.push(nextSqr);
+                
+                let prevRow = sqr.parentElement.previousElementSibling;
+                let nextRow = sqr.parentElement.nextElementSibling;
+
+                // previous row
+                if(prevRow != null){
+                    let sqr_1 = prevRow.children[index-1];
+                    let sqr_2 = prevRow.children[index];
+                    let sqr_3 = prevRow.children[index+1];
+
+                    sqrsToOpen.push(sqr_1);
+                    sqrsToOpen.push(sqr_2);
+                    sqrsToOpen.push(sqr_3);
+                }
+
+                // next row
+                if(nextRow != null){
+                    let sqr_1 = nextRow.children[index-1];
+                    let sqr_2 = nextRow.children[index];
+                    let sqr_3 = nextRow.children[index+1];
+
+                    sqrsToOpen.push(sqr_1);
+                    sqrsToOpen.push(sqr_2);
+                    sqrsToOpen.push(sqr_3);
+                }
+
+                // loop through squares to change
+                for(let sqrToOpen of sqrsToOpen){
+                    if(sqrToOpen == null){continue}
+                    if(sqrToOpen.getAttribute("mine") === "true"){continue}
+                    if(sqrToOpen.getAttribute("status") === "open"){continue}
+
+                    openSquares(sqrToOpen);
+                }
+            }
+        }
+
+        function restartGame(){
+            document.querySelector("#resetGame").style.display = "none";
+            document.querySelector("#gameover-text").style.display = "none";
+            document.querySelector("#gamewon-text").style.display = "none";
+
+            document.querySelector("table").innerHTML = "";
+
+            createBoard(squares);
+            setupMines(minePercentage);
+            setupNumbers();
+            setupPlayMode();
+
+            game = true;
+        }
+
+        function hasWon(){
+            let squares = table.querySelectorAll("td");
+            let total = [...squares].length;
+            let solved = 0;
+
+            for(let sqr of squares){
+                if(sqr.getAttribute("status") == "open" || (sqr.getAttribute("status") == "marked" && sqr.getAttribute("mine") == "true")){
+                    solved++;
+                }
+            }
+
+            if(solved == total){
+                console.log("Game Won!");
+
+                document.querySelector("#resetGame").style.display = "block";
+                document.querySelector("#gamewon-text").style.display = "block";
+                game = false;
+                return true;
+            } else {
+                return false;
+            }
+        }
+        
+        // function displayNumbers(){
+        //     let squares = table.querySelectorAll("td");
+
+        //     for(let sqr of squares){
+        //         let value = sqr.getAttribute("value");
+                
+        //         if(value === "-1" || value === "0"){continue}
+
+        //         sqr.innerText = value;
+        //     }
+        // }
+    }
+</script>
+
+<% include partials/footer %>
