@@ -5,22 +5,7 @@ console.log("SERVER START");
 // SETTINGS
 // ==========================================
 
-// --------- FILE RUN ARGUMENTS ----------------
-var minimist = require('minimist')
-
-var args = minimist(process.argv.slice(2), {
-  boolean: 'development',
-  alias: {d: 'development', dev: 'development'},
-  default: {
-  	development: false
-  }
-})
-// --------- FILE RUN ARGUMENTS ----------------
-
-const DEVELOPMENT = args.development;
-
-console.log(`Mode: ${DEVELOPMENT? "DEVELOPMENT":"RELEASE"}`);
-const serverPORT = DEVELOPMENT? 8080:8082;
+const serverPORT = 8082;
 console.log(`Server PORT: ${serverPORT}`);
 
 // ==========================================
@@ -33,7 +18,6 @@ console.log("Setup..");
 var express = require("express");
 var app = express();
 var bodyParser = require("body-parser");
-var mongoose = require("mongoose");
 var flash = require('connect-flash');
 var expressSession = require("express-session");
 var favicon = require('serve-favicon');
